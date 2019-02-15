@@ -1,0 +1,116 @@
+fastlane_require 'open3'
+fastlane_require 'yaml'
+fastlane_require 'xcodeproj'
+
+default_platform(:ios)
+platform :ios do 
+  desc "Description of what the lane does"
+
+  lane :deploy do |options|
+    # Fetch the project from the project variable
+    project = fetch_project(options)
+
+    # Get the branch that you are trying to deploy
+    branch_name = options[:branch_name] || 'develop'
+    
+    # Get the environment that you are trying to deploy
+    # TODO: Maybe set a default environemt per project?
+    environment = options[:environment] || project['default_scheme']
+    
+    # Pull the latest brach to the projects folder.
+    # Returns the new project directory
+    project_directory = checkout_scm(
+      project_name: options[:project],
+      project: project,
+      branch_name: branch_name
+    )
+
+    # Get the scheme based on the project name & envoronment
+    # Schemes should be saved as ${Project_name} ${Environment} ex Deicer Deimos
+    scheme = get_scheme(
+      project,
+      environment
+    )
+    
+    # Fetch the bundle ID for that scheme as they could differ
+    bundle_id = product_bundle_id(
+      File.join(project_directory, project['project_url']),
+      scheme
+    )
+
+    # Set the build folder based on the scheme, remove the spaces
+    # for better folder structure
+    filename = scheme.gsub(' ', '')
+
+    # Fetch the profiles needed to sign the app
+    sigh(
+      adhoc: false,
+      app_identifier: bundle_id,
+      output_path: "#{Dir.home}/ios_profiles",
+      username: ENV['FASTLANE_USER']
+    )
+
+    # build the app with xcode
+    # Returns: path to completed IPA
+    ipa_path = gym(
+      export_method: 'enterprise',
+      workspace: File.join(project_directory, project['workspace_url']),
+      xcargs: "-allowProvisioningUpdates",
+      scheme: scheme,
+      configuration: 'Release',
+      output_directory: "./builds/#{Time.now.strftime("%F")}/#{filename}/",
+      output_name: "#{filename}.ipa",
+      disable_xcpretty: true
+    )
+  end
+
+  lane :fetch_project do |options|
+    projects = YAML.load(File.read('../config.yml'))['projects']
+    if !options[:project] || !projects[options[:project]]
+      UI.user_error!("Project either not specified, or does not exist try [#{projects.keys.join(', ')}]")
+    end
+    projects[options[:project]]
+  end
+  
+  lane :checkout_scm do |options|
+    project = options[:project]
+    project_name = options[:project_name]
+    branch_name = options[:branch_name]
+    branch_name
+    cwd = Dir.pwd
+    path = Pathname.new(File.join(cwd, "..", "projects/#{project_name}/"))
+    # Make the folder for the new file.
+    if !Dir.exist?(path)
+      FileUtils.mkdir_p path
+    end
+
+    Dir.chdir(path) do
+      if !Dir.exist?(File.join(path, './.git'))
+        command("git clone #{project['git_url']} .")
+      end
+      command("git fetch -p")
+      command("git checkout -B #{branch_name} origin/#{branch_name} -f")
+    end
+
+    path
+  end
+  
+  def command(s)
+    stdout_str, stderr_str, status = Open3.capture3(s)
+    # If the command fails throw a Fastlane error message
+    UI.user_error!("#{s}: #{stderr_str.chomp}") unless status.success?
+    stdout_str
+  end
+
+  def get_scheme(project, environment)
+    project['schemes'][environment]
+  end
+
+  def product_bundle_id(project_workspace, scheme)
+    project = Xcodeproj::Project.open(project_workspace);
+    scheme = project.native_targets.find { |target| target.name == scheme }
+    build_configuration = scheme.build_configurations.first
+    build_configuration.build_settings['PRODUCT_BUNDLE_IDENTIFIER']
+  end
+
+end
