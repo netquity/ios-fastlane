@@ -20,7 +20,7 @@ or alternatively using `brew cask install fastlane`
 ```
 fastlane ios deploy
 ```
-Description of what the lane does
+Deploy to Netquity AWS S3 Bucket
 ### ios fetch_project
 ```
 fastlane ios fetch_project

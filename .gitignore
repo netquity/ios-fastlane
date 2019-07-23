@@ -2,3 +2,5 @@ builds/*
 projects/*
 config.yml
 report.xml
+.env
+*.cer

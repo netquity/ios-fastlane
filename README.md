@@ -25,6 +25,13 @@ projects:
       production: 'Project Scheme Name'
 ```
 
+Create a `.env` file in the root of this project. This .env file contains the Fastlane user account, and AWS S3 configuration:
+```
+FASTLANE_USER=""
+S3_ACCESS_KEY=""
+S3_SECRET_ACCESS_KEY=""
+S3_BUCKET=""
+```
 
 ## Deploying
 
