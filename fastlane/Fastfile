@@ -81,7 +81,7 @@ platform :ios do
       secret_access_key: ENV["S3_SECRET_ACCESS_KEY"],
       bucket: ENV["S3_BUCKET"],
       region: ENV["AWS_REGION"],
-      path: "IOS_IPA/" + options[:project] + "/" + options[:environment] + "/" + options[:branch] + "/v{CFBundleShortVersionString}_b{CFBundleVersion}/", # This is actually the default.
+      path: "IOS_IPA/" + options[:project] + "/" + options[:environment] + "/" + options[:branch_name] + "/v{CFBundleShortVersionString}_b{CFBundleVersion}/", # This is actually the default.
     )
 
   end
@@ -98,7 +98,6 @@ platform :ios do
     project = options[:project]
     project_name = options[:project_name]
     branch_name = options[:branch_name]
-    branch_name
     cwd = Dir.pwd
     path = Pathname.new(File.join(cwd, "..", "projects/#{project_name}/"))
     # Make the folder for the new file.
