@@ -1,6 +1,5 @@
 # Ruby Gem Imports
 fastlane_require 'dotenv/load'
-# fastlane_require 'aws-sdk-s3'
 
 # Fastlane imports
 fastlane_require 'open3'
@@ -22,7 +21,6 @@ platform :ios do
     branch_name = options[:branch_name] || 'develop'
     
     # Get the environment that you are trying to deploy
-    # TODO: Maybe set a default environemt per project?
     environment = options[:environment] || project['default_scheme']
     
     # Pull the latest brach to the projects folder.
@@ -71,7 +69,7 @@ platform :ios do
       scheme: scheme,
       configuration: 'Release',
       output_directory: "./builds/#{Time.now.strftime("%F")}/#{filename}/",
-      output_name: "#{Time.now.strftime("%F")}-#{filename}.ipa",
+      output_name: "#{filename}-#{Time.now.strftime("%F")}.ipa",
       disable_xcpretty: true
     )
 
@@ -81,7 +79,8 @@ platform :ios do
       secret_access_key: ENV["S3_SECRET_ACCESS_KEY"],
       bucket: ENV["S3_BUCKET"],
       region: ENV["AWS_REGION"],
-      path: "IOS_IPA/" + options[:project] + "/" + options[:environment] + "/" + options[:branch_name] + "/v{CFBundleShortVersionString}_b{CFBundleVersion}/", # This is actually the default.
+      path: options[:project] + "/" + options[:environment] + "/",
+      upload_metadata: false,
     )
 
   end
