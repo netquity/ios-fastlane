@@ -1,10 +1,17 @@
+# Ruby Gem Imports
+fastlane_require 'dotenv/load'
+
+# Fastlane imports
 fastlane_require 'open3'
 fastlane_require 'yaml'
 fastlane_require 'xcodeproj'
 
+# Load .env file
+Dotenv.load('../.env')
+
 default_platform(:ios)
 platform :ios do 
-  desc "Description of what the lane does"
+  desc "Deploy to Netquity AWS S3 Bucket"
 
   lane :deploy do |options|
     # Fetch the project from the project variable
@@ -14,7 +21,6 @@ platform :ios do
     branch_name = options[:branch_name] || 'develop'
     
     # Get the environment that you are trying to deploy
-    # TODO: Maybe set a default environemt per project?
     environment = options[:environment] || project['default_scheme']
     
     # Pull the latest brach to the projects folder.
@@ -42,6 +48,10 @@ platform :ios do
     # for better folder structure
     filename = scheme.gsub(' ', '')
 
+    cert(
+      keychain_path: "~/Library/KeyChains/login.keychain-db"
+    )
+
     # Fetch the profiles needed to sign the app
     sigh(
       adhoc: false,
@@ -59,9 +69,20 @@ platform :ios do
       scheme: scheme,
       configuration: 'Release',
       output_directory: "./builds/#{Time.now.strftime("%F")}/#{filename}/",
-      output_name: "#{filename}.ipa",
+      output_name: "#{filename}-#{Time.now.strftime("%F")}.ipa",
       disable_xcpretty: true
     )
+
+    # Upload the .ipa file to a AWS s3 bucket - configuration must be contained within a .env file
+    aws_s3(
+      access_key: ENV["S3_ACCESS_KEY"],
+      secret_access_key: ENV["S3_SECRET_ACCESS_KEY"],
+      bucket: ENV["S3_BUCKET"],
+      region: ENV["AWS_REGION"],
+      path: options[:project] + "/" + options[:environment] + "/",
+      upload_metadata: false,
+    )
+
   end
 
   lane :fetch_project do |options|
@@ -76,7 +97,6 @@ platform :ios do
     project = options[:project]
     project_name = options[:project_name]
     branch_name = options[:branch_name]
-    branch_name
     cwd = Dir.pwd
     path = Pathname.new(File.join(cwd, "..", "projects/#{project_name}/"))
     # Make the folder for the new file.
